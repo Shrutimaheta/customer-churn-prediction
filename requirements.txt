@@ -1,7 +1,11 @@
-# Versions this project was tested with (Python 3.14)
+# Versions this project was tested with (needs Python 3.12 or newer)
 pandas==3.0.5
 numpy==2.5.2
 scikit-learn==1.9.0
 matplotlib==3.11.1
 joblib==1.5.3
 openpyxl==3.1.5
+
+# Live demo (app.py)
+streamlit==1.67.0
+altair==6.3.0
