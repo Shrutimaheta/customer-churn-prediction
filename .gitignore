@@ -1,0 +1,8 @@
+# Trained model files -- regenerate with: python churn_prediction.py
+*.pkl
+
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/

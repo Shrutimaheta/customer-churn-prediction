@@ -1,0 +1,7 @@
+# Versions this project was tested with (Python 3.14)
+pandas==3.0.5
+numpy==2.5.2
+scikit-learn==1.9.0
+matplotlib==3.11.1
+joblib==1.5.3
+openpyxl==3.1.5
