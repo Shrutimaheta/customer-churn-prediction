@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Customer Churn Predictor</title>
+<meta name="description" content="Live demo: predict telecom customer churn with a Random Forest trained on the IBM Telco dataset. Runs entirely in your browser.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📉</text></svg>">
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #16181d; --muted: #5f6672;
+    --border: #e3e6eb; --accent: #4f46e5; --accent-soft: #eef0ff;
+    --danger: #c2410c; --danger-soft: #fff1e8; --ok: #15803d; --ok-soft: #ecfdf3;
+    --track: #e8ebf0; --bar: #6366f1;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1115; --card: #171a21; --text: #e8eaee; --muted: #9aa2af;
+      --border: #272c36; --accent: #8b8cf8; --accent-soft: #23264a;
+      --danger: #fb923c; --danger-soft: #3a2316; --ok: #4ade80; --ok-soft: #14301f;
+      --track: #262b35; --bar: #818cf8;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 32px 16px 48px; }
+  header h1 { font-size: 30px; margin: 0 0 6px; letter-spacing: -0.02em; }
+  header p { margin: 0; color: var(--muted); max-width: 720px; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 22px 0; }
+  .stat { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .stat .k { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .stat .v { font-size: 24px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .layout { display: grid; grid-template-columns: 1.55fr 1fr; gap: 18px; align-items: start; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; }
+  .card h2 { font-size: 17px; margin: 0 0 4px; }
+  .card .sub { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+  .presets { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .presets button {
+    border: 1px solid var(--border); background: var(--bg); color: var(--text);
+    border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer;
+  }
+  .presets button:hover { border-color: var(--accent); color: var(--accent); }
+  .groups { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .group h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 0 0 8px; }
+  label.field { display: block; margin-bottom: 11px; font-size: 13px; }
+  label.field span { display: block; margin-bottom: 4px; color: var(--muted); }
+  select, input[type=number] {
+    width: 100%; padding: 7px 9px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text); font: inherit; font-size: 14px;
+  }
+  select:disabled { opacity: .55; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .range-row { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; }
+  .result { position: sticky; top: 16px; }
+  .prob { font-size: 54px; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .meter { position: relative; height: 12px; border-radius: 999px; background: var(--track); margin: 12px 0 6px; overflow: visible; }
+  .meter .fill { height: 100%; border-radius: 999px; background: var(--accent); transition: width .25s ease; }
+  .meter .tick { position: absolute; top: -4px; width: 2px; height: 20px; background: var(--text); border-radius: 1px; }
+  .verdict { margin-top: 12px; padding: 10px 12px; border-radius: 10px; font-weight: 600; }
+  .verdict.churn { background: var(--danger-soft); color: var(--danger); }
+  .verdict.stay { background: var(--ok-soft); color: var(--ok); }
+  .divider { height: 1px; background: var(--border); margin: 18px 0; }
+  .imp-row { display: grid; grid-template-columns: 1fr 110px; gap: 10px; align-items: center; font-size: 13px; margin: 5px 0; }
+  .imp-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .imp-bar { height: 8px; border-radius: 999px; background: var(--track); }
+  .imp-bar div { height: 100%; border-radius: 999px; background: var(--bar); }
+  .note { font-size: 12.5px; color: var(--muted); }
+  footer { margin-top: 26px; font-size: 13px; color: var(--muted); }
+  a { color: var(--accent); }
+  #loading { color: var(--muted); padding: 40px 0; }
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    .result { position: static; }
+    .groups { grid-template-columns: 1fr 1fr; }
+    .stats { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 560px) {
+    .groups { grid-template-columns: 1fr; }
+    header h1 { font-size: 25px; }
+    .prob { font-size: 44px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>📉 Customer Churn Predictor</h1>
+    <p>Enter a telecom customer's details to see how likely they are to cancel.
+      The model is a Random Forest (200 trees) trained on the real IBM Telco dataset,
+      and it runs entirely in your browser.</p>
+  </header>
+
+  <div class="stats" id="stats"></div>
+  <div id="loading">Loading model…</div>
+
+  <div class="layout" id="app" hidden>
+    <section class="card">
+      <h2>Customer details</h2>
+      <p class="sub">Change any field and the prediction updates instantly.</p>
+      <div class="presets">
+        <button data-preset="risky">High-risk example</button>
+        <button data-preset="loyal">Loyal customer example</button>
+      </div>
+      <div class="groups">
+        <div class="group" id="g-account"><h3>Account</h3></div>
+        <div class="group" id="g-services"><h3>Services</h3></div>
+        <div class="group" id="g-people"><h3>Demographics</h3></div>
+      </div>
+    </section>
+
+    <aside class="card result">
+      <h2>Churn probability</h2>
+      <div class="prob" id="prob">–</div>
+      <div class="meter"><div class="fill" id="fill"></div><div class="tick" id="tick"></div></div>
+      <div class="note">The line marks the decision threshold.</div>
+      <div class="verdict" id="verdict"></div>
+
+      <div class="divider"></div>
+      <label class="field"><span>Decision threshold</span>
+        <input type="range" id="threshold" min="0.1" max="0.9" step="0.05" value="0.5">
+      </label>
+      <div class="range-row note"><span>Catch more churners</span><b id="thr-val">0.50</b><span>Fewer false alarms</span></div>
+
+      <div class="divider"></div>
+      <h2>What drives churn overall</h2>
+      <p class="sub">Top 10 features by Random Forest importance.</p>
+      <div id="importances"></div>
+    </aside>
+  </div>
+
+  <footer>
+    Source code, training pipeline and full explanation:
+    <a href="https://github.com/Shrutimaheta/customer-churn-prediction">github.com/Shrutimaheta/customer-churn-prediction</a>
+  </footer>
+</div>
+
+<script>
+(async function () {
+  const res = await fetch("model.json");
+  const M = await res.json();
+
+  // ---------- header stats
+  const stats = [
+    ["Customers", M.n_customers.toLocaleString()],
+    ["Churn rate", (M.churn_rate * 100).toFixed(1) + "%"],
+    ["Test ROC-AUC", M.metrics.roc_auc.toFixed(3)],
+    ["Test recall", M.metrics.recall.toFixed(2)],
+  ];
+  document.getElementById("stats").innerHTML = stats
+    .map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
+
+  // ---------- form definition
+  const ADDONS = ["Online Security", "Online Backup", "Device Protection",
+                  "Tech Support", "Streaming TV", "Streaming Movies"];
+  const choices = (col) => M.options[col].filter(v => !v.startsWith("No ") || v === "No");
+  const fields = {
+    "g-account": [
+      ["Tenure Months", "range", { min: 0, max: 72, label: "Tenure (months)" }],
+      ["Contract", "select"],
+      ["Payment Method", "select"],
+      ["Paperless Billing", "select"],
+      ["Monthly Charges", "number", { label: "Monthly charges ($)", step: 5 }],
+      ["Total Charges", "number", { label: "Total charges ($)", step: 50 }],
+    ],
+    "g-services": [
+      ["Phone Service", "select"],
+      ["Multiple Lines", "select"],
+      ["Internet Service", "select"],
+      ...ADDONS.map(c => [c, "select"]),
+    ],
+    "g-people": [
+      ["Gender", "select"], ["Senior Citizen", "select"],
+      ["Partner", "select"], ["Dependents", "select"],
+    ],
+  };
+
+  const inputs = {};
+  for (const [group, list] of Object.entries(fields)) {
+    const el = document.getElementById(group);
+    for (const [name, type, opt = {}] of list) {
+      const label = document.createElement("label");
+      label.className = "field";
+      const title = opt.label || name;
+      let input;
+      if (type === "select") {
+        input = document.createElement("select");
+        for (const v of choices(name)) input.add(new Option(v, v));
+      } else {
+        input = document.createElement("input");
+        input.type = type;
+        if (opt.min !== undefined) input.min = opt.min;
+        if (opt.max !== undefined) input.max = opt.max;
+        input.step = opt.step || 1;
+        if (type === "number") input.min = 0;
+      }
+      label.innerHTML = `<span>${title}${type === "range" ? ': <b id="tenure-val"></b>' : ""}</span>`;
+      label.appendChild(input);
+      el.appendChild(label);
+      inputs[name] = input;
+    }
+  }
+
+  // Total charges follows monthly × tenure until the user edits it directly.
+  let totalEdited = false;
+  inputs["Total Charges"].addEventListener("input", () => { totalEdited = true; });
+
+  const PRESETS = {
+    risky: {
+      "Tenure Months": 2, "Contract": "Month-to-month", "Payment Method": "Electronic check",
+      "Paperless Billing": "Yes", "Monthly Charges": 95, "Phone Service": "Yes",
+      "Multiple Lines": "No", "Internet Service": "Fiber optic", "Online Security": "No",
+      "Online Backup": "No", "Device Protection": "No", "Tech Support": "No",
+      "Streaming TV": "Yes", "Streaming Movies": "Yes", "Gender": "Female",
+      "Senior Citizen": "No", "Partner": "No", "Dependents": "No",
+    },
+    loyal: {
+      "Tenure Months": 60, "Contract": "Two year", "Payment Method": "Credit card (automatic)",
+      "Paperless Billing": "No", "Monthly Charges": 65, "Phone Service": "Yes",
+      "Multiple Lines": "Yes", "Internet Service": "DSL", "Online Security": "Yes",
+      "Online Backup": "Yes", "Device Protection": "Yes", "Tech Support": "Yes",
+      "Streaming TV": "No", "Streaming Movies": "No", "Gender": "Male",
+      "Senior Citizen": "No", "Partner": "Yes", "Dependents": "Yes",
+    },
+  };
+  function applyPreset(p) {
+    for (const [k, v] of Object.entries(PRESETS[p])) inputs[k].value = v;
+    totalEdited = false;
+    update();
+  }
+  document.querySelectorAll("[data-preset]").forEach(b =>
+    b.addEventListener("click", () => applyPreset(b.dataset.preset)));
+
+  // ---------- model: same encoding + tree walk as export_model.py
+  function record() {
+    const r = {};
+    for (const [k, el] of Object.entries(inputs)) {
+      r[k] = el.type === "range" || el.type === "number" ? Number(el.value) || 0 : el.value;
+    }
+    if (r["Phone Service"] === "No") r["Multiple Lines"] = "No phone service";
+    if (r["Internet Service"] === "No") for (const c of ADDONS) r[c] = "No internet service";
+    return r;
+  }
+  function encode(r) {
+    return M.features.map(f => f.value === null ? Number(r[f.source]) : (r[f.source] === f.value ? 1 : 0));
+  }
+  function predict(x) {
+    // scikit-learn rounds inputs to float32 before comparing with the threshold.
+    const xf = x.map(Math.fround);
+    let total = 0;
+    for (const t of M.trees) {
+      let n = 0;
+      while (t.l[n] !== -1) n = xf[t.f[n]] <= t.t[n] ? t.l[n] : t.r[n];
+      total += t.v[n];
+    }
+    return total / M.trees.length;
+  }
+
+  // ---------- render
+  const thr = document.getElementById("threshold");
+  function update() {
+    const tenure = Number(inputs["Tenure Months"].value);
+    document.getElementById("tenure-val").textContent = tenure;
+    if (!totalEdited) {
+      inputs["Total Charges"].value = (Number(inputs["Monthly Charges"].value) * tenure).toFixed(2);
+    }
+    inputs["Multiple Lines"].disabled = inputs["Phone Service"].value === "No";
+    const noNet = inputs["Internet Service"].value === "No";
+    for (const c of ADDONS) inputs[c].disabled = noNet;
+
+    const p = predict(encode(record()));
+    const t = Number(thr.value);
+    document.getElementById("thr-val").textContent = t.toFixed(2);
+    document.getElementById("prob").textContent = (p * 100).toFixed(1) + "%";
+    document.getElementById("fill").style.width = (p * 100) + "%";
+    document.getElementById("tick").style.left = `calc(${t * 100}% - 1px)`;
+    const v = document.getElementById("verdict");
+    if (p >= t) { v.className = "verdict churn"; v.textContent = "⚠️ Likely to churn — consider a retention offer."; }
+    else { v.className = "verdict stay"; v.textContent = "✅ Likely to stay."; }
+  }
+  Object.values(inputs).forEach(el => el.addEventListener("input", update));
+  thr.addEventListener("input", update);
+
+  const maxImp = M.importances[0].importance;
+  document.getElementById("importances").innerHTML = M.importances.map(d =>
+    `<div class="imp-row"><span class="name" title="${d.feature}">${d.feature.replace("_", ": ")}</span>` +
+    `<div class="imp-bar"><div style="width:${(d.importance / maxImp) * 100}%"></div></div></div>`).join("");
+
+  document.getElementById("loading").remove();
+  document.getElementById("app").hidden = false;
+  applyPreset("risky");
+
+  // Exposed for testing in the browser console.
+  window.churnDemo = { predict, encode, record, inputs, applyPreset, update };
+})().catch(err => {
+  document.getElementById("loading").textContent = "Could not load the model: " + err.message;
+});
+</script>
+</body>
+</html>

@@ -5,67 +5,31 @@ Live demo: enter a customer's details and get a churn prediction.
 
 Run locally:  streamlit run app.py
 
-The model is trained the same way as in churn_prediction.py (same
-cleaning, same dropped columns, same encoding, same Random Forest
-settings) when the app starts, then cached -- so the demo works
-straight from the repo without any saved .pkl files.
+The model is trained by churn_core.py (the same steps as
+churn_prediction.py) when the app starts, then cached -- so the demo
+works straight from the repo without any saved .pkl files.
+
+The hosted demo is the static web/ version (see export_model.py); this
+Streamlit app is the local, all-Python alternative.
 """
 
 import altair as alt
 import pandas as pd
 import streamlit as st
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import precision_score, recall_score, roc_auc_score
-from sklearn.model_selection import train_test_split
+
+import churn_core
 
 st.set_page_config(page_title="Customer Churn Predictor", page_icon="📉", layout="wide")
 
-DROP_COLS = [
-    "CustomerID", "Count", "Country", "State", "City", "Zip Code",
-    "Lat Long", "Latitude", "Longitude",
-    "Churn Value", "Churn Score", "Churn Reason", "CLTV",
-]
-
-
-@st.cache_data
-def load_data():
-    df = pd.read_excel("Telco_customer_churn.xlsx")
-    df["Total Charges"] = pd.to_numeric(df["Total Charges"], errors="coerce").fillna(0)
-    data = df.drop(columns=DROP_COLS)
-    data["Churn"] = data.pop("Churn Label").map({"Yes": 1, "No": 0})
-    return data
-
-
-@st.cache_resource
-def train_model(data):
-    categorical_cols = data.select_dtypes(include=["object", "string"]).columns.tolist()
-    encoded = pd.get_dummies(data, columns=categorical_cols, drop_first=True)
-    X = encoded.drop(columns=["Churn"])
-    y = encoded["Churn"]
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
-    rf = RandomForestClassifier(
-        n_estimators=200, max_depth=8, random_state=42, class_weight="balanced"
-    )
-    rf.fit(X_train, y_train)
-    y_prob = rf.predict_proba(X_test)[:, 1]
-    y_pred = (y_prob >= 0.5).astype(int)
-    metrics = {
-        "ROC-AUC": roc_auc_score(y_test, y_prob),
-        "Recall": recall_score(y_test, y_pred),
-        "Precision": precision_score(y_test, y_pred),
-    }
-    importances = (
-        pd.Series(rf.feature_importances_, index=X.columns)
-        .sort_values(ascending=False)
-        .head(10)
-    )
-    return rf, list(X.columns), categorical_cols, metrics, importances
-
-
-data = load_data()
-model, model_columns, categorical_cols, metrics, importances = train_model(data)
+data = st.cache_data(churn_core.load_data)()
+trained = st.cache_resource(churn_core.train_model)(data)
+model, model_columns = trained["model"], trained["columns"]
+importances = trained["importances"]
+metrics = {
+    "ROC-AUC": trained["metrics"]["roc_auc"],
+    "Recall": trained["metrics"]["recall"],
+    "Precision": trained["metrics"]["precision"],
+}
 
 
 def options(col):
@@ -131,7 +95,7 @@ customer = pd.DataFrame([{
 }])
 
 # Same encoding as training, aligned to the model's exact columns.
-encoded = pd.get_dummies(customer).reindex(columns=model_columns, fill_value=0)
+encoded = churn_core.encode_customer(customer, model_columns)
 prob = model.predict_proba(encoded)[0][1]
 
 # ---------------------------------------------------------------- result
