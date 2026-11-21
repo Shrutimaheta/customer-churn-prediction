@@ -6,6 +6,13 @@ teaches the **theory behind every step**, in the order you'll actually
 use it — not as a separate textbook, but wired directly to the code in
 `churn_prediction.py`.
 
+### 🔴 Live demo: [customer-churn-prediction-gamma-eight.vercel.app](https://customer-churn-prediction-gamma-eight.vercel.app)
+
+Enter a customer's details and get their churn probability instantly,
+adjust the decision threshold, and see what drives churn. The trained
+Random Forest runs entirely in the browser (see
+[Live demo: how it works](#live-demo-how-it-works)).
+
 ---
 
 ## 1. What is Machine Learning, really?
@@ -293,6 +300,35 @@ Outputs produced:
 - `roc_curve.png` — model comparison
 - `churn_model.pkl`, `model_columns.pkl` — saved Random Forest + the column order it expects
 
+## Live demo: how it works
+
+The hosted demo is a static website on Vercel. There's no Python server:
+the trained model runs in the visitor's browser.
+
+- **`export_model.py`** trains the same Random Forest (via `churn_core.py`)
+  and writes every tree to `web/model.json`. Each tree is just a list of
+  "is feature ≤ threshold? go left : go right" questions ending in a
+  churn probability, so the browser can replay them and average the 200
+  results. Before writing the file, the script checks that this replay
+  gives the same probability as scikit-learn for every test customer.
+- **`web/index.html`** is the page: it loads `model.json`, encodes the
+  form exactly like training (one-hot columns), and predicts on every change.
+- Vercel serves the `web/` folder and redeploys automatically on every
+  push to `main`.
+
+To update the demo after changing the model:
+
+```bash
+python export_model.py           # rewrites web/model.json (with the parity check)
+git add web/model.json && git commit -m "Update demo model" && git push
+```
+
+To preview it locally: `python -m http.server 8600 --directory web`, then
+open http://localhost:8600.
+
+There's also a Streamlit version of the demo (`app.py`, all Python) for
+running locally: `streamlit run app.py`.
+
 ## Results summary (this run, on real data)
 
 - Logistic Regression: ROC-AUC ≈ 0.849, Recall ≈ 0.78, Precision ≈ 0.51
@@ -328,6 +364,5 @@ Section 11, not a flaw.
 5. **Wrap it in a Flask/FastAPI endpoint** — turn `predict_new_customer.py`
    into a real API a front-end could call. (Great pairing with your
    Django experience.)
-6. **Deploy a Streamlit dashboard** — a simple UI where you input a
-   customer's details and see the churn probability live — excellent
-   for demoing in interviews.
+6. ~~**Deploy a live demo**~~ — done: see the
+   [live demo](https://customer-churn-prediction-gamma-eight.vercel.app).
