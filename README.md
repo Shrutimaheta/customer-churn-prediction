@@ -6,7 +6,7 @@ teaches the **theory behind every step**, in the order you'll actually
 use it — not as a separate textbook, but wired directly to the code in
 `churn_prediction.py`.
 
-### 🔴 Live demo: [customer-churn-prediction-gamma-eight.vercel.app](https://customer-churn-prediction-gamma-eight.vercel.app)
+### 🔴 Live demo: [shruti-churn-prediction.vercel.app](https://shruti-churn-prediction.vercel.app)
 
 Enter a customer's details and get their churn probability instantly,
 adjust the decision threshold, and see what drives churn. The trained
@@ -365,4 +365,4 @@ Section 11, not a flaw.
    into a real API a front-end could call. (Great pairing with your
    Django experience.)
 6. ~~**Deploy a live demo**~~ — done: see the
-   [live demo](https://customer-churn-prediction-gamma-eight.vercel.app).
+   [live demo](https://shruti-churn-prediction.vercel.app).
